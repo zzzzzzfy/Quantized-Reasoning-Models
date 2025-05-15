@@ -10,3 +10,6 @@
 [submodule "third-party/fast-hadamard-transform"]
 	path = third-party/fast-hadamard-transform
 	url = https://github.com/Dao-AILab/fast-hadamard-transform.git
+[submodule "third-party/llm-compressor"]
+	path = third-party/llm-compressor
+	url = https://github.com/vllm-project/llm-compressor/

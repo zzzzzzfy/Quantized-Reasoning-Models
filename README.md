@@ -38,6 +38,9 @@ VLLM_USE_PRECOMPILED=1 pip install -e ./third-party/vllm
 pip install -e ./third-party/lighteval
 pip install -e ./third-party/lighteval[math]
 pip uninstall xformers && pip install -v -U -e third-party/xformers
+
+# Real-quantization (optional)
+pip install -e ./third-party/llm-compressor
 ```
 
 ### Data Preparation
