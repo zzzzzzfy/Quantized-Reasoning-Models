@@ -90,10 +90,12 @@ if __name__ == "__main__":
         modelzoo_dir = "./modelzoo/QwQ" if "QwQ" in model else "./modelzoo/DeepSeek-R1"
         tokenizer = transformers.AutoTokenizer.from_pretrained(os.path.join(modelzoo_dir, model))
         for method in args.methods:
-            if method != '':
-                quantized_model = "-".join([model, method, f"tp{tp}"])
-            else:
+            if method == '':
                 quantized_model = model
+            elif 'quantized' in method:
+                quantized_model = "-".join([model, method])
+            else:
+                quantized_model = "-".join([model, method, f"tp{tp}"])
             for seed in args.seeds:
                 full_name = "-".join([quantized_model, f"seed{seed}"])
                 for dataset in args.datasets:

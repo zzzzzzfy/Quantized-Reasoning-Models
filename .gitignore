@@ -5,3 +5,4 @@ modelzoo*
 datasets*
 *experiments*
 tmp/
+sparse_logs/

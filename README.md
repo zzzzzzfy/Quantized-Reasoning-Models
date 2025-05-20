@@ -37,10 +37,15 @@ pip install -e ./third-party/fast-hadamard-transform
 VLLM_USE_PRECOMPILED=1 pip install -e ./third-party/vllm
 pip install -e ./third-party/lighteval
 pip install -e ./third-party/lighteval[math]
-pip uninstall xformers && pip install -v -U -e third-party/xformers
+pip uninstall xformers -y && pip install -v -U -e third-party/xformers
 
 # Real-quantization (optional)
-pip install -e ./third-party/llm-compressor
+# Quantize model with AutoAWQ
+pip install -e ./third-party/AutoAWQ
+# Quantize model with GPTQModel
+pip install -v -e ./third-party/GPTQModel --no-build-isolation
+# Quantize model with llm-compressor
+# pip install -e ./third-party/llm-compressor
 ```
 
 ### Data Preparation
@@ -95,6 +100,8 @@ Download models in `./modelzoo`.
 
 ## Model Quantization
 
+### Fake Quantization
+
 In quantization, we need to specify the Tensor Parallelism number (TP) during model inference. TP is typically set to 4 or 8.
 
 The fake-quantized models will be saved in `outputs/modelzoo`.
@@ -148,6 +155,23 @@ bash scripts/quantization/quarot.sh ./modelzoo/DeepSeek-R1/DeepSeek-R1-Distill-Q
 bash scripts/quantization/flatquant.sh ./modelzoo/DeepSeek-R1/DeepSeek-R1-Distill-Qwen-7B 4 0
 ```
 
+### Real Quantization
+
+Currently, we provide real-quantization scripts for AWQ and GPTQ INT4-quantized models.
+
+**AWQ (W4A16KV16)**
+
+```bash
+# Quantize DeepSeek-R1-Distill-Qwen-7B with AWQ on device 0.
+bash scripts/real_quantization/awq.sh ./modelzoo/DeepSeek-R1/DeepSeek-R1-Distill-Qwen-7B 0
+```
+
+**GPTQ (W4A16KV16)**
+
+```bash
+# Quantize DeepSeek-R1-Distill-Qwen-7B with GPTQ on device 0.
+bash scripts/real_quantization/gptq.sh ./modelzoo/DeepSeek-R1/DeepSeek-R1-Distill-Qwen-7B 0
+```
 
 ## Evaluation
 
@@ -161,8 +185,11 @@ By default, we use three different seeds for evaluation. The inference results w
 # Run inference of DeepSeek-R1-Distill-Qwen-7B model on devices 0,1,2,3
 bash scripts/inference/inference.sh ./modelzoo/DeepSeek-R1/DeepSeek-R1-Distill-Qwen-7B 0,1,2,3
 
-# Run inference of GPTQ-quantized DeepSeek-R1-Distill-Qwen-7B model on devices 0,1,2,3
-bash scripts/inference/inference.sh ./outputs/modelzoo/gptq/DeepSeek-R1-Distill-Qwen-1.5B-gptq-w4g128-tp4 0,1,2,3
+# Run inference of GPTQ-fake-quantized DeepSeek-R1-Distill-Qwen-7B model on devices 0,1,2,3
+bash scripts/inference/inference.sh ./outputs/modelzoo/gptq/DeepSeek-R1-Distill-Qwen-7B-gptq-w4g128-tp4 0,1,2,3
+
+# Run inference of GPTQ-real-quantized DeepSeek-R1-Distill-Qwen-7B model on devices 0,1,2,3
+bash scripts/inference/inference.sh ./outputs/modelzoo/real_quantization/gptq-gptqmodel/DeepSeek-R1-Distill-Qwen-7B-quantized.gptq-gptqmodel-w4g128 0,1,2,3
 ```
 
 **Show evaluation results**
@@ -175,6 +202,8 @@ python -m make_stats_table --stats acc
 python -m make_stats_table --stats length
 ```
 
+To show evaluation results of real-quantized models, specify `--methods quantized.gptq-gptqmodel-w4g128 quantized.awq-autoawq-w4g128`
+
 ## Visualization
 
 ```bash
@@ -184,10 +213,6 @@ python -m methods.visualize.visualize --model ./modelzoo/DeepSeek-R1/DeepSeek-R1
 # Visualize the bias term in K cache (Figure 10 & 11)
 python -m methods.visualize.visualize --model ./modelzoo/DeepSeek-R1/DeepSeek-R1-Distill-Qwen-1.5B --exp kcache-bias
 ```
-
-## TODO 🎯
-
-- [ ] Upload real-quantized models to HuggingFace Hub (AWQ, GPTQ, FlatQuant...).
 
 # Acknowledgements
 

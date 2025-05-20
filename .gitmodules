@@ -13,3 +13,9 @@
 [submodule "third-party/llm-compressor"]
 	path = third-party/llm-compressor
 	url = https://github.com/vllm-project/llm-compressor/
+[submodule "third-party/AutoAWQ"]
+	path = third-party/AutoAWQ
+	url = https://github.com/casper-hansen/AutoAWQ
+[submodule "third-party/GPTQModel"]
+	path = third-party/GPTQModel
+	url = https://github.com/ModelCloud/GPTQModel.git

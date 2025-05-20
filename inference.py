@@ -43,6 +43,10 @@ def parser_gen():
                         help='Maximum model input length.')
     args = parser.parse_args()
 
+    # force float16 for gptqmodel inference
+    if "gptqmodel" in args.model:
+        args.dtype = "float16"
+
     # output path
     args.model_name = args.model.split("/")[-1]
     output_dir = os.path.join("./outputs", "inference", f"{args.model_name}-seed{args.seed}") if args.output_dir is None else args.output_dir
