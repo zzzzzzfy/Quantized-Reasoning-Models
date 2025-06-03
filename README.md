@@ -10,7 +10,8 @@ We provide a systematic study on quantized reasoning models, evaluating the open
 
 ## News 🔥
 
-- [2025/04] The code for fake-quantization and evaluation is publicly released!.
+- [2025/06] We now support real-quantization for AWQ and GPTQ. The real-quantized models are released at [Modelzoo](#modelzoo).
+- [2025/04] The code for fake-quantization and evaluation is publicly released!
 
 ## Contents
 
@@ -18,6 +19,7 @@ We provide a systematic study on quantized reasoning models, evaluating the open
 - [Model Quantization](#model-quantization)
 - [Evaluation](#evaluation)
 - [Visualization](#visualization)
+- [Modelzoo](#modelzoo)
 - [Acknowledgements](#acknowledgements)
 - [References](#references)
 
@@ -214,7 +216,15 @@ python -m methods.visualize.visualize --model ./modelzoo/DeepSeek-R1/DeepSeek-R1
 python -m methods.visualize.visualize --model ./modelzoo/DeepSeek-R1/DeepSeek-R1-Distill-Qwen-1.5B --exp kcache-bias
 ```
 
-# Acknowledgements
+## Modelzoo
+
+We provide the real-quantized reasoning models at [HuggingFace](https://huggingface.co/collections/ruikangliu/deepseek-r1-distill-quantized-68357b2a87b1a76137ad20d0). The supported models are listed in the following table:
+
+| Model             | AWQ-W4G128   | GPTQ-W4G128   |
+| ----------------- | ---------------- | --------- |
+| DeepSeek-R1-Distill-Qwen | ✅ 1.5B / 7B / 14B / 32B | ✅ 1.5B / 7B / 14B / 32B |
+
+## Acknowledgements
 
 This project is based on the work of the following projects:
 
