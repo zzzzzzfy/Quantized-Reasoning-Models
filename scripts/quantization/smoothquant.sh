@@ -15,7 +15,6 @@ python -m methods.smoothquant.save_fake_quant \
     --a_bits ${BITS} --a_asym \
     --k_bits ${BITS} --k_asym --k_groupsize 128 \
     --v_bits ${BITS} --v_asym --v_groupsize 128 \
-    --seqlen 512 --nsamples 512 --cal_dataset pileval \
+    --seqlen 2048 --nsamples 128 --cal_dataset reasoning-numina-math-1.5 \
     --tp ${tp} \
-    --save_qmodel_path ./outputs/modelzoo/smoothquant/${model_name}-smoothquant-w${BITS}a${BITS}kv${BITS}-tp${tp} \
-    --cal_dataset reasoning-numina-math-1.5 --nsamples 128 --seqlen 2048
+    --save_qmodel_path ./outputs/modelzoo/smoothquant/${model_name}-smoothquant-w${BITS}a${BITS}kv${BITS}-tp${tp}
