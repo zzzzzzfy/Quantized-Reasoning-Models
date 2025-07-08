@@ -10,6 +10,7 @@ We provide a systematic study on quantized reasoning models, evaluating the open
 
 ## News 🔥
 
+- [2025/07] Our paper has been accepted to COLM 2025! 🎉
 - [2025/06] We now support real-quantization for AWQ and GPTQ. The real-quantized models are released at [Modelzoo](#modelzoo).
 - [2025/04] The code for fake-quantization and evaluation is publicly released!
 
