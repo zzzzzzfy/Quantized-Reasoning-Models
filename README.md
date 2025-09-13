@@ -1,3 +1,36 @@
+# npu上的代码适配
+这是使用华为昇腾910B进行测试的npu适配版本，基于vllm_ascend镜像进行docker构建和环境配置。具体的环境配置如下：
+```shell
+#!/bin/bash
+
+# Update the vllm-ascend image
+export IMAGE=quay.io/ascend/vllm-ascend:v0.10.0rc1
+
+docker run --name vllm-ascend03 \
+    --device=/dev/davinci_manager \
+    --device=/dev/devmm_svm \
+    --device=/dev/hisi_hdc \
+    --device=/dev/davinci4 \
+    --device=/dev/davinci5 \
+    --device=/dev/davinci6 \
+    --device=/dev/davinci7 \
+    -v /usr/local/dcmi:/usr/local/dcmi \
+    -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
+    -v /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/ \
+    -v /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info \
+    -v /etc/ascend_install.info:/etc/ascend_install.info \
+    -v /root/.cache:/root/.cache \
+    -v /data:/data \
+    -p 8001:8000 \
+    -it -d $IMAGE bash
+
+cd /data/disk2/Quantized-Reasoning-Models
+pip install -r requirements.txt
+pip install -e ./third-party/lighteval
+pip install -e ./third-party/lighteval[math]
+```
+
+原代码库的Readme文件如下所示：
 # Quantization Hurts Reasoning? An Empirical Study on Quantized Reasoning Models
 
 [![arXiv](https://img.shields.io/badge/arXiv-2504.04823-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2504.04823)
