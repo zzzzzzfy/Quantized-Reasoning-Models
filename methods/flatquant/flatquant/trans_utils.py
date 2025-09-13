@@ -7,7 +7,7 @@ from .function_utils import get_init_weight, get_inverse
 
 # ---------- transformation version of singular value decomposition ----------
 class SVDSingleTransMatrix(nn.Module):
-    def __init__(self, size, device="cuda"):
+    def __init__(self, size, device="npu"):
         super(SVDSingleTransMatrix, self).__init__()
         self.linear_u = nn.Linear(size, size, bias=False, device=device)
         self.linear_u.weight.data = get_init_weight(size).to(self.linear_u.weight)
@@ -56,7 +56,7 @@ class SVDSingleTransMatrix(nn.Module):
 
 
 class SVDDecomposeTransMatrix(nn.Module):
-    def __init__(self, left_size, right_size, add_diag=False, diag_init_para=None, device="cuda"):
+    def __init__(self, left_size, right_size, add_diag=False, diag_init_para=None, device="npu"):
         super(SVDDecomposeTransMatrix, self).__init__()
         self.linear_u_left = nn.Linear(left_size, left_size, bias=False, device=device)
         self.linear_u_left.weight.data = get_init_weight(left_size).to(self.linear_u_left.weight)
@@ -152,7 +152,7 @@ class SVDDecomposeTransMatrix(nn.Module):
 
 # ---------- transformation version of direct inverse ----------
 class InvSingleTransMatrix(nn.Module):
-    def __init__(self, size, device="cuda"):
+    def __init__(self, size, device="npu"):
         super(InvSingleTransMatrix, self).__init__()
         linear = nn.Linear(size, size, bias=False, device=device)
         linear.weight.data = get_init_weight(size).to(linear.weight)
@@ -194,7 +194,7 @@ class InvSingleTransMatrix(nn.Module):
 
 
 class InvDecomposeTransMatrix(nn.Module):
-    def __init__(self, left_size, right_size, add_diag=False, diag_init_para=None, device="cuda"):
+    def __init__(self, left_size, right_size, add_diag=False, diag_init_para=None, device="npu"):
         super(InvDecomposeTransMatrix, self).__init__()
         linear_left = nn.Linear(left_size, left_size, bias=False, device=device)
         linear_left.weight.data = get_init_weight(left_size).to(linear_left.weight)
