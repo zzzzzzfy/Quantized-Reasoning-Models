@@ -67,36 +67,50 @@ gpqa_metric = multilingual_extractive_match_metric(
 
 def prompt_fn(line, task_name: str = None):
     """Assumes the model is either prompted to emit \\boxed{answer} or does so automatically"""
+    problems = line["problem"]
     return Doc(
         task_name=task_name,
-        query=f"{line["problem"]}\n\nPlease reason step by step, and put your final answer within \\boxed{{}}.",
+        query= problems + "\n\nPlease reason step by step, and put your final answer within \\boxed{}.",
         choices=[line["solution"]],
         gold_index=0,
     )
 
 
 def aime24_prompt_fn(line, task_name: str = None):
+    problems = line["problem"]
     return Doc(
         task_name=task_name,
-        query=f"{line["Problem"]}\n\nPlease reason step by step, and put your final answer within \\boxed{{}}.",
+        query= problems + "\n\nPlease reason step by step, and put your final answer within \\boxed{}.",
         choices=[line["Answer"]],
         gold_index=0,
     )
 
 
 def aime25_prompt_fn(line, task_name: str = None):
+    problems = line["problem"]
     return Doc(
         task_name=task_name,
-        query=f"{line["problem"]}\n\nPlease reason step by step, and put your final answer within \\boxed{{}}.",
+        query= problems + "\n\nPlease reason step by step, and put your final answer within \\boxed{}.",
         choices=[line["answer"]],
+        gold_index=0,
+    )
+    
+    
+def aime90_prompt_fn(line, task_name: str = None):
+    problems = line["problem"]
+    return Doc(
+        task_name=task_name,
+        query= problems + "\n\nPlease reason step by step, and put your final answer within \\boxed{}.",
+        choices=[line["expected_answer"]],
         gold_index=0,
     )
 
 
 def gsm8k_prompt_fn(line, task_name: str = None):
+    problems = line["question"]
     return Doc(
         task_name=task_name,
-        query=f"{line["question"]}\n\nPlease reason step by step, and put your final answer within \\boxed{{}}.",
+        query= problems + "\n\nPlease reason step by step, and put your final answer within \\boxed{}.",
         choices=[line["answer"]],
         gold_index=0,
     )
@@ -138,7 +152,7 @@ aime25 = LightevalTaskConfig(
     name="aime25",
     suite=["custom"],
     prompt_function=aime25_prompt_fn,
-    hf_repo="./datasets/aime_2025",     # yentinglin/aime_2025
+    hf_repo="./datasets/aime_2025/data",     # yentinglin/aime_2025
     hf_subset="default",
     hf_avail_splits=["train"],
     evaluation_splits=["train"],
@@ -151,11 +165,11 @@ aime25 = LightevalTaskConfig(
 aime90 = LightevalTaskConfig(
     name="aime90",
     suite=["custom"],
-    prompt_function=aime25_prompt_fn,
-    hf_repo="./datasets/AIME90",     # xiaoyuanliu/AIME90
+    prompt_function=aime90_prompt_fn,
+    hf_repo="./datasets/AIME90/data",     # xiaoyuanliu/AIME90
     hf_subset="default",
-    hf_avail_splits=["train"],
-    evaluation_splits=["train"],
+    hf_avail_splits=["2022", "2023", "2024"],
+    evaluation_splits=["test"],
     few_shots_split=None,
     few_shots_select=None,
     generation_size=32768,
@@ -180,7 +194,7 @@ numina_math = LightevalTaskConfig(
     name="numina_math",
     suite=["custom"],
     prompt_function=aime25_prompt_fn,
-    hf_repo="./datasets/NuminaMath-1.5",   # AI-MO/NuminaMath-1.5
+    hf_repo="./datasets/NuminaMath-1.5/data",   # AI-MO/NuminaMath-1.5
     hf_subset="default",
     hf_avail_splits=["train"],
     evaluation_splits=["train"],
@@ -209,7 +223,7 @@ gpqa_diamond = LightevalTaskConfig(
     suite=["custom"],
     prompt_function=gpqa_prompt_fn,
     hf_repo="./datasets/gpqa",  # Idavidrein/gpqa
-    hf_subset="gpqa_diamond",
+    hf_subset="default",
     hf_avail_splits=["train"],
     evaluation_splits=["train"],
     few_shots_split=None,
