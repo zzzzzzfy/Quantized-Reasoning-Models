@@ -1,4 +1,5 @@
 # npu上的代码适配
+暂时只做了模型DeepSeek-R1-Distill-Qwen-7B的awq和flatquant方法的适配修改。
 这是使用华为昇腾910B进行测试的npu适配版本，基于vllm_ascend镜像进行docker构建和环境配置。具体的环境配置如下：
 ```shell
 #!/bin/bash
