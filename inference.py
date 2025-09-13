@@ -9,6 +9,12 @@ import transformers
 from vllm import LLM
 from vllm.engine.arg_utils import PoolerConfig
 
+
+# 给 npu 加的，清理临时存储的，但暂时没用上
+import gc 
+from vllm.distributed.parallel_state import (destroy_distributed_environment,
+                                             destroy_model_parallel)
+
 from lighteval.models.model_input import GenerationParameters
 from lighteval_custom.models.vllm.vllm_model import VLLMModelConfig
 from lighteval_custom.main_vllm import vllm
@@ -54,10 +60,19 @@ def parser_gen():
     args.output_path = os.path.join(output_dir, f"{args.dataset}.jsonl")
 
     # Distributed settings
-    args.tensor_parallel_size = torch.cuda.device_count()
+    # args.tensor_parallel_size = torch.cuda.device_count()
+    args.tensor_parallel_size = 4
 
     return args
 
+
+# 给 npu 加的，清理临时存储的，但暂时没用上
+def clean_up():
+    destroy_model_parallel()
+    destroy_distributed_environment()
+    gc.collect()
+    torch.npu.empty_cache()
+    
 
 class PPLEvaluator:
     def __init__(self, args):
@@ -66,10 +81,11 @@ class PPLEvaluator:
         # LLM head
         llm_hf = transformers.AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=args.dtype)
         self.lm_head = llm_hf.lm_head
-        self.lm_head.to("cuda:0")
+        # self.lm_head.to("cuda:0")
+        self.lm_head.to("npu:0")
         # LLM to output hidden_states before LLM head
         self.llm = LLM(model=args.model, dtype=args.dtype, enforce_eager=True,
-                       tensor_parallel_size=args.tensor_parallel_size,
+                       tensor_parallel_size=args.tensor_parallel_size, distributed_executor_backend="mp",
                        task="embed", override_pooler_config=PoolerConfig(pooling_type="ALL", normalize=False, softmax=False))
 
     @torch.no_grad()
