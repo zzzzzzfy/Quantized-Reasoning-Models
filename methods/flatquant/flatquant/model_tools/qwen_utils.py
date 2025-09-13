@@ -11,7 +11,7 @@ from ..trans_utils import InvSingleTransMatrix, InvDecomposeTransMatrix
 from ..trans_utils import TPTransMatrix
 from ..flat_linear import FlatQuantizedLinear
 
-from transformers.models.qwen2.modeling_qwen2 import Qwen2MLP, Qwen2Attention, \
+from transformers.models.qwen2.modeling_qwen2 import Qwen2MLP, Qwen2Attention, Qwen2RotaryEmbedding,  \
                                                      apply_rotary_pos_emb, repeat_kv
 
 
@@ -31,8 +31,8 @@ class FlatQuantQwen2MLP(torch.nn.Module):
         self._ori_mode = False
         self.diag_init = args.diag_init
         if self.diag_init == "sq_style":
-            self.up_smax = torch.ones_like(self.up_proj.linear.weight.abs().max(dim=0)[0]).cuda() * 1e-5
-            self.down_smax = torch.ones_like(self.down_proj.linear.weight.abs().max(dim=0)[0]).cuda() * 1e-5
+            self.up_smax = torch.ones_like(self.up_proj.linear.weight.abs().max(dim=0)[0]).to('npu') * 1e-5
+            self.down_smax = torch.ones_like(self.down_proj.linear.weight.abs().max(dim=0)[0]).to('npu') * 1e-5
         
     def add_fq_trans(self):
         if self.args.direct_inv:
@@ -46,7 +46,7 @@ class FlatQuantQwen2MLP(torch.nn.Module):
             down_dim_left, down_dim_right = get_decompose_dim(self.down_trans_dim)
             trans_list = []
             for i in range(self.args.tp):
-                trans_list.append(DecomposeTransMatrix(down_dim_left, down_dim_right, add_diag=self.args.add_diag, device="cuda"))
+                trans_list.append(DecomposeTransMatrix(down_dim_left, down_dim_right, add_diag=self.args.add_diag, device="npu"))
             self.down_trans = TPTransMatrix(trans_list)
             # down_dim_left, down_dim_right = get_decompose_dim(self.down_proj.linear.weight.shape[1])
             # self.down_trans = DecomposeTransMatrix(down_dim_left, down_dim_right, add_diag=self.args.add_diag)
@@ -130,6 +130,9 @@ class FlatQuantQwen2Attention(Qwen2Attention):
         super().__init__(module.config, module.layer_idx)
         self.args = args
         
+        # 补充 rotary_emb 的定义
+        self.rotary_emb = Qwen2RotaryEmbedding(config=module.config)
+         
         self.qkv_quant = ActivationQuantizer(bits=args.a_bits, sym=not(args.a_asym), lac=args.lac)
         self.q_proj = FlatQuantizedLinear(args, module.q_proj, act_quantizer=self.qkv_quant)
         self.k_proj = FlatQuantizedLinear(args, module.k_proj, act_quantizer=self.qkv_quant)
@@ -151,7 +154,7 @@ class FlatQuantQwen2Attention(Qwen2Attention):
         self._eval_mode = False
         self.diag_init = args.diag_init
         if self.diag_init == "sq_style":
-            self.ln_smax = torch.ones_like(self.q_proj.linear.weight.abs().max(dim=0)[0]).cuda() * 1e-5
+            self.ln_smax = torch.ones_like(self.q_proj.linear.weight.abs().max(dim=0)[0]).to('npu') * 1e-5
 
     def add_fq_trans(self):
         if self.args.direct_inv:
@@ -227,6 +230,12 @@ class FlatQuantQwen2Attention(Qwen2Attention):
             query_states, key_states, value_states = self._ori_forward_after_ln(hidden_states)
         else:
             query_states, key_states, value_states = self._trans_forward_after_ln(hidden_states)
+            
+        # self.num_heads 一直在报错没有定义，翻了模型的config文件发现确实没有，加一个定义，这是transformers库版本不同造成的
+        self.num_heads = self.config.num_attention_heads
+        
+         # self.num_key_value_heads也是同理，这是transformers库版本不同造成的
+        self.num_key_value_heads = self.config.num_key_value_heads
 
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
         key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
@@ -273,7 +282,9 @@ class FlatQuantQwen2Attention(Qwen2Attention):
             )
 
         attn_output = attn_output.transpose(1, 2).contiguous()
-        attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
+        # 检测不到 self.hidden_size，使用动态计算，这是transformers库版本不同造成的
+        # attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
+        attn_output = attn_output.reshape(bsz, q_len, -1)
         if self._ori_mode:
             attn_output = self.o_proj._ori_forward(attn_output)
         else:
@@ -297,7 +308,9 @@ class FlatQuantQwen2Attention(Qwen2Attention):
 
         if not output_attentions:
             attn_weights = None
-        return attn_output, attn_weights, past_key_value
+        # 出了左右和父类接收不匹配的问题，这是transformers库版本不同造成的
+        # return attn_output, attn_weights, past_key_value
+        return attn_output, attn_weights
 
     def reparameterize(self):
         if self.ln_trans is not None:
@@ -342,6 +355,7 @@ class FlatQuantQwen2Attention(Qwen2Attention):
 def apply_flatquant_to_qwen(args, model):
     skip_initialization()
     # Replace module with FlatQuant version
+    # 如果去掉最后一层的量化，range里要-1
     for layer in range(model.config.num_hidden_layers):
         # attn
         model.model.layers[layer].self_attn = FlatQuantQwen2Attention(args, model.model.layers[layer].self_attn)
