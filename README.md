@@ -28,7 +28,8 @@ docker run --name vllm-ascend01 \
 
 cd /data/disk2/Quantized-Reasoning-Models
 # 相比于原版删除了transformers库和torch库的下载
-# 镜像内transformers库的默认版本是4.53.3，torch库的默认版本是2.7.1+cpu，torch_npu库的默认版本是2.7.1.dev20250724，为适配vllm_ascend均不能修改
+# 镜像内transformers库的默认版本是4.53.3，torch库的默认版本是2.7.1+cpu，torch_npu库的默认版本是2.7.1.dev20250724
+# 为适配vllm_ascend均不能修改
 pip install -r requirements.txt
 # 建议到源链接下载到镜像内目录后安装
 pip install -e ./third-party/lighteval
