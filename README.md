@@ -37,6 +37,24 @@ pip install -r requirements.txt
 pip install -e ./third-party/lighteval
 pip install -e ./third-party/lighteval[math]
 ```
+## 在FlatQuant方法中，如果需要不进行最后一层的量化，请按如下说明修改代码：
+* ./methods/flatquant/flatquant/train_utils.py line 99:
+  ```python
+  for i in range(num_train_layer-1):
+  ```
+* ./methods/flatquant/flatquant/flat_utils.py line 34:
+  ```python
+  for idx in range(model.config.num_hidden_layers-1):
+  ```
+  line 86:
+  ```python
+  for i in range(len(model.model.layers)-1):
+  ```
+* ./methods/flatquant/flatquant/model_tools/qwen_utils.py line 359:
+  ```python
+  for layer in range(model.config.num_hidden_layers-1):
+  ```
+
 
 原代码库的Readme文件如下所示：
 # Quantization Hurts Reasoning? An Empirical Study on Quantized Reasoning Models
