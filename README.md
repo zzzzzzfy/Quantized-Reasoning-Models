@@ -6,14 +6,16 @@
 # Update the vllm-ascend image
 export IMAGE=quay.io/ascend/vllm-ascend:v0.10.0rc1
 
-docker run --name vllm-ascend03 \
+# 请根据自己的实际情况和需要修改device对应的npu序号
+# 镜像内的Python版本为3.11
+docker run --name vllm-ascend01 \
     --device=/dev/davinci_manager \
     --device=/dev/devmm_svm \
     --device=/dev/hisi_hdc \
-    --device=/dev/davinci4 \
-    --device=/dev/davinci5 \
-    --device=/dev/davinci6 \
-    --device=/dev/davinci7 \
+    --device=/dev/davinci0 \
+    --device=/dev/davinci1 \
+    --device=/dev/davinci2 \
+    --device=/dev/davinci3 \
     -v /usr/local/dcmi:/usr/local/dcmi \
     -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
     -v /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/ \
@@ -25,7 +27,10 @@ docker run --name vllm-ascend03 \
     -it -d $IMAGE bash
 
 cd /data/disk2/Quantized-Reasoning-Models
+# 相比于原版删除了transformers库和torch库的下载
+# 镜像内transformers库的默认版本是4.53.3，torch库的默认版本是2.7.1+cpu，torch_npu库的默认版本是2.7.1.dev20250724，为适配vllm_ascend均不能修改
 pip install -r requirements.txt
+# 建议到源链接下载到镜像内目录后安装
 pip install -e ./third-party/lighteval
 pip install -e ./third-party/lighteval[math]
 ```
