@@ -116,7 +116,7 @@ def pseudo_quantize_model_weight(
         for n, m in named_linears.items():
             dev = m.weight.device
             if dev.type == "cpu":
-                m.cuda()
+                m.to("npu")
             m.weight.data = pseudo_quantize_tensor(m.weight.data, n_bit=w_bit, **q_config)
             if dev.type == "cpu":
                 m.cpu()
