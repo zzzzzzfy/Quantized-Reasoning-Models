@@ -96,7 +96,7 @@ def cali_flat_quant(args, model, dataloader, dev, logger, start_layer_idx=0):
     num_train_layer = len(layers)
     mse_dict = {}
     # 如果去掉最后一层的量化，这里range里-1
-    for i in range(num_train_layer-1):
+    for i in range(num_train_layer):
         logger.info(f"========= Layer {i} =========")
         dtype_dict = {}
         layer = layers[i].to(dev)
