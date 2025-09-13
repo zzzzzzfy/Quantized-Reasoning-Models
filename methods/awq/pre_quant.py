@@ -91,7 +91,7 @@ def run_awq(
 
     if "bigcode" in str(model.__class__).lower():
         # otherwise attention_mask will always be on cpu.
-        model.transformer.bias = model.transformer.bias.to("cuda")
+        model.transformer.bias = model.transformer.bias.to("npu")
     layers = get_blocks(model)
 
     if calib_data == "pileval":
@@ -105,14 +105,24 @@ def run_awq(
     inps = []
     layer_kwargs = {}
 
-    layers[0] = layers[0].cuda()
-    move_embed(model, "cuda")
+    layers[0] = layers[0].to("npu")
+    move_embed(model, "npu")
     if hasattr(model.model, "rotary_emb"):
-        model.model.rotary_emb = model.model.rotary_emb.cuda()
+        model.model.rotary_emb = model.model.rotary_emb.to("npu")
     
     # get input and kwargs to layer 0
     # with_kwargs is only supported in PyTorch 2.0
     # use this Catcher hack for now
+    # class Catcher(nn.Module):
+    #     def __init__(self, module):
+    #         super().__init__()
+    #         self.module = module
+
+    #     def forward(self, inp, **kwargs):
+    #         inps.append(inp)
+    #         layer_kwargs.update(kwargs)
+    #         raise ValueError  # early exit to break later inference
+    
     class Catcher(nn.Module):
         def __init__(self, module):
             super().__init__()
@@ -121,7 +131,12 @@ def run_awq(
         def forward(self, inp, **kwargs):
             inps.append(inp)
             layer_kwargs.update(kwargs)
-            raise ValueError  # early exit to break later inference
+            raise ValueError    # early exit to break later inference
+        # 会报错属性缺失，添加转发到原类的 __getattr__ 方法
+        def __getattr__(self, name):
+            if name in ["module"]:
+                return super().__getattr__(name)
+            return getattr(self.module, name)
 
     # patch layer 0 to catch input and kwargs
     layers[0] = Catcher(layers[0])
@@ -137,7 +152,7 @@ def run_awq(
     move_embed(model, "cpu")
     
     gc.collect()
-    torch.cuda.empty_cache()
+    torch.npu.empty_cache()
 
     awq_results = {
         "scale": [],
@@ -147,7 +162,7 @@ def run_awq(
     # solve layer by layer
     for i in tqdm.tqdm(range(len(layers)), desc="Running AWQ..."):
         layer = layers[i]
-        layer = layer.cuda()
+        layer = layer.to('npu')
         named_linears = get_named_linears(layer)
 
         # firstly, get input features of all linear layers
@@ -171,7 +186,7 @@ def run_awq(
         input_feat = {k: torch.cat(v, dim=0) for k, v in input_feat.items()}
 
         # Clear GPU memory
-        torch.cuda.empty_cache()
+        torch.npu.empty_cache()
 
         if auto_scale:  # if it applies, we should also modify the input_feat with scales
             scales_list = auto_scale_block(
@@ -185,7 +200,7 @@ def run_awq(
             awq_results["scale"] += append_str_prefix(scales_list, get_op_name(model, layer) + ".")
 
         # Clear GPU memory
-        torch.cuda.empty_cache()
+        torch.npu.empty_cache()
         
         if mse_range:
             clip_list = auto_clip_block(layer,
@@ -200,7 +215,7 @@ def run_awq(
         # Haotian: check activation replacement
         del input_feat
         gc.collect()
-        torch.cuda.empty_cache()
+        torch.npu.empty_cache()
         
     model.config.use_cache = use_cache
     return awq_results
