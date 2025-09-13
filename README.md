@@ -1,6 +1,6 @@
 # npu上的代码适配
 暂时只做了模型DeepSeek-R1-Distill-Qwen-7B的awq和flatquant方法的适配修改。
-
+## 环境配置
 这是使用华为昇腾910B进行测试的npu适配版本，基于vllm_ascend镜像进行docker构建和环境配置。具体的环境配置如下：
 ```shell
 #!/bin/bash
@@ -37,7 +37,12 @@ pip install -r requirements.txt
 pip install -e ./third-party/lighteval
 pip install -e ./third-party/lighteval[math]
 ```
-## 在FlatQuant方法中，如果需要不进行最后一层的量化，请按如下说明修改代码：
+推荐使用bash命令直接运行.sh文件。
+
+数据集和模型文件的配置请参考 ./datasets/readme.md。
+
+## 关于FlatQuant方法的修改说明
+### 在FlatQuant方法中，如果需要不进行最后一层的量化，请按如下说明修改代码：
 * ./methods/flatquant/flatquant/train_utils.py line 99:
   ```python
   for i in range(num_train_layer-1):
@@ -54,7 +59,41 @@ pip install -e ./third-party/lighteval[math]
   ```python
   for layer in range(model.config.num_hidden_layers-1):
   ```
+### 测试表明重参数化方法可能会显著影响量化后模型的推理效果，具体原因还在研究，请按如下说明选择性使用：
+* ./methods/flatquant/main.py line 50：
+    ```python
+    # npu适配的默认状态下注释掉了，源代码中为正常使用
+    flat_utils.reparameterize_model(model)
+    ```
 
+## 代码使用
+使用命令行运行，推荐使用后台挂载方式，以便退出容器和服务器时能够正常继续运行，并且可以随时查看npu的使用情况：
+### 量化
+```shell
+# awq方法，需要修改参数请到对应的awq.sh文件
+nohup bash scripts/quantization/awq.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_awq.log 2>&1 &
+# flatquant方法，需要修改参数请到对应的flatquant.sh文件
+nohup bash scripts/quantization/flatquant.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_flatquant.log 2>&1 &
+```
+### 评测
+```shell
+# 评测该代码库量化后的模型只需要更改模型读取路径
+nohup bash scripts/inference/inference.sh /data/disk2/modelzoo/DeepSeek-R1-Distill-Qwen-7B 0,1,2,3 > output_test.log 2>&1 &
+# 完成全部评测后可以将结果通过表格的形式进行打印
+python -m make_stats_table --stats acc --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42        # 测试准确率
+python -m make_stats_table --stats length --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42     # 测试所需的推理长度
+```
+备注：FlatQuant方法量化后的模型暂时不能通过该方法正常进行读取和评测，还在修改。
+### 推理测试
+用于检测模型能否完成简单的对话推理任务：
+```shell
+# 需要修改python文件中的模型读取路径
+# 测试模型能否通过vllm_ascend库正常进行推理，代码文件中的伪量化类注释掉了，进行测试时请自行取消注释
+python test1.py
+# 测试模型能否通过transformers库正常进行推理
+python test2.py
+```
+备注：FlatQuant方法量化后的模型可以通过transformers库进行推理，暂时不能通过vllm_ascend进行推理。
 
 原代码库的Readme文件如下所示：
 # Quantization Hurts Reasoning? An Empirical Study on Quantized Reasoning Models
