@@ -29,6 +29,7 @@ def main():
     logger.info("Finished loading training data.")
 
     if args.quantize:
+        # 如果不进行最后一层的量化，需要到这个函数的文件里溯源修改
         model = apply_flatquant_to_model(args, model)
         logger.info("Finished applying FlatQuant to model.")
         if args.resume:
@@ -40,10 +41,13 @@ def main():
                 _, start_layer_idx = flat_utils.resume_training(args, model)
             else:
                 start_layer_idx = 0
+            # 如果不进行最后一层的量化，需要到这个函数的文件里溯源修改
             train_utils.cali_flat_quant(args, model, trainloader, utils.DEV, logger=logger, start_layer_idx=start_layer_idx)
         if args.save_matrix and not args.reload_matrix:
+            # 这里也要不保存最后一层的量化参数
             flat_utils.save_flat_matrices(args, model)
-        flat_utils.reparameterize_model(model)
+        # 这里在npu上需要考虑注释掉，具体的原因还不清楚
+        # flat_utils.reparameterize_model(model)
         logger.info("Finished reparameterize model.")
 
     if args.w_bits < 16:
