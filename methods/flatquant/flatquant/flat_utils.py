@@ -31,7 +31,7 @@ def reparameterize_ln(ln, trans):
 
 def reparameterize_model(model):
     # 如果不做最后一层的量化，range里要-1
-    for idx in range(model.config.num_hidden_layers-1):
+    for idx in range(model.config.num_hidden_layers):
         layer = model.model.layers[idx]
         layer.self_attn.reparameterize()
         layer.mlp.reparameterize()
@@ -82,8 +82,8 @@ def resume_training(args, model, path=None):
 
 def save_flat_matrices(args, model):
     flat_matrices = {}
-    # 如果不做最后一层的量化，不保存最后一层的量化参数
-    for i in range(len(model.model.layers)-1):
+    # 如果不做最后一层的量化，这里range里要-1（不保存最后一层的参数）
+    for i in range(len(model.model.layers)):
         layer = model.model.layers[i]
         layer.self_attn.rep_matrix_only()
         layer.mlp.rep_matrix_only()
