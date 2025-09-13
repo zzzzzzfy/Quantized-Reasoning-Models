@@ -21,12 +21,13 @@ def cali_flat_quant(args, model, dataloader, dev, logger, start_layer_idx=0):
         param.requires_grad = False
 
     # activate AMP
+    # 这里的混合精度不知道有没有影响
     if args.deactive_amp:
         dtype = torch.float32
         traincast = nullcontext
     else:
         dtype = torch.bfloat16
-        traincast = functools.partial(torch.amp.autocast, device_type="cuda", dtype=dtype)
+        traincast = functools.partial(torch.amp.autocast, device_type="npu", dtype=dtype)
 
     # move embedding layer and first layer to target device
     layers = model.model.layers
@@ -51,6 +52,14 @@ def cali_flat_quant(args, model, dataloader, dev, logger, start_layer_idx=0):
             cache["attention_mask"] = kwargs["attention_mask"]
             cache["position_ids"] = kwargs["position_ids"]
             raise ValueError
+        def __getattr__(self, name):
+        # 除了module和本地属性，其他都转发给self.module
+            if name in ["module", "forward"]:
+                return super().__getattr__(name)
+            return getattr(self.module, name)
+        
+        # 返回 qwen_utils.py 中添加的 rotary_emb 属性，使用 qwen2 里的原 self.rotary_emb 定义（做个记录，修改在qwen_utils.py文件里）
+        
     layers[0] = Catcher(layers[0])
     with torch.no_grad():
         for batch in dataloader:
@@ -75,7 +84,7 @@ def cali_flat_quant(args, model, dataloader, dev, logger, start_layer_idx=0):
     if hasattr(model.model, "rotary_emb"):
         model.model.rotary_emb = model.model.rotary_emb.cpu()
     # raise ValueError("Only support for llama-2/Llama-3/qwen-2 now")
-    torch.cuda.empty_cache()
+    torch.npu.empty_cache()
 
     # same input of first layer for fp model and quant model
     fp_inps = inps   # take output of fp model as input
@@ -86,7 +95,8 @@ def cali_flat_quant(args, model, dataloader, dev, logger, start_layer_idx=0):
     flat_parameters = {}
     num_train_layer = len(layers)
     mse_dict = {}
-    for i in range(num_train_layer):
+    # 如果去掉最后一层的量化，这里range里-1
+    for i in range(num_train_layer-1):
         logger.info(f"========= Layer {i} =========")
         dtype_dict = {}
         layer = layers[i].to(dev)
@@ -166,11 +176,11 @@ def cali_flat_quant(args, model, dataloader, dev, logger, start_layer_idx=0):
             if name in dtype_dict.keys():
                 param.data = param.to(dtype_dict[name])
         del layer
-        torch.cuda.empty_cache()
+        torch.npu.empty_cache()
 
     del inps, fp_inps, fp_outs
     gc.collect()
-    torch.cuda.empty_cache()
+    torch.npu.empty_cache()
     model.config.use_cache = use_cache
     return model
 
