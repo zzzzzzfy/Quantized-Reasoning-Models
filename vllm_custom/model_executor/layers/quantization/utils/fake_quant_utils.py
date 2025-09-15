@@ -9,10 +9,12 @@ def round_ste(x: torch.Tensor):
 
 def get_qmin_qmax(bits, sym):
     if sym:
-        q_max = torch.tensor(2 ** (bits - 1) - 1)
+        # q_max = torch.tensor(2 ** (bits - 1) - 1)
+        q_max = 2 ** (bits - 1) - 1
         q_min = -q_max -1
     else:
-        q_max, q_min = torch.tensor(2 ** bits - 1), 0
+        # q_max, q_min = torch.tensor(2 ** bits - 1), 0
+        q_max, q_min = 2 ** bits - 1, 0
     return q_max, q_min
 
 
@@ -82,12 +84,16 @@ class ActivationQuantizer(torch.nn.Module):
         if scale is None or zero is None:
             scale, zero = self.get_scale_zero(x)
         if self.sym:
-            return sym_quant_dequant(x, scale, self.q_max.to(x)).to(x_dtype)
+            # return sym_quant_dequant(x, scale, self.q_max.to(x)).to(x_dtype)
+            return sym_quant_dequant(x, scale, self.q_max).to(x_dtype)
         else:
-            return asym_quant_dequant(x, scale, zero, self.q_max.to(x)).to(x_dtype)  # TODO
+            # 这里和相关位置需要固定数据，避免触发动态计算报错
+            # return asym_quant_dequant(x, scale, zero, self.q_max.to(x)).to(x_dtype)  # TODO
+            return asym_quant_dequant(x, scale, zero, self.q_max).to(x_dtype)
 
     def get_scale_zero(self, x):
-        q_max = self.q_max.to(x)
+        # q_max = self.q_max.to(x)
+        q_max = self.q_max
         init_shape = x.shape
         reshaped_x = x.reshape((-1, x.shape[-1]))
         xmax, xmin = reshaped_x.amax(1, keepdim=True), reshaped_x.amin(1, keepdim=True)
@@ -112,11 +118,15 @@ class ActivationQuantizer(torch.nn.Module):
             zero = torch.zeros_like(scale)
         else:
             tmp = (xmin == 0) & (xmax == 0)
-            xmin[tmp] = -1
-            xmax[tmp] = +1
+            # 这里会触发nonzero对应的底层算子aclnnNonzeroV2报错
+            # xmin[tmp] = -1
+            # xmax[tmp] = +1
+            xmin = torch.where(tmp, torch.full_like(xmin, -1), xmin)
+            xmax = torch.where(tmp, torch.full_like(xmax, +1), xmax)
             scale = (xmax - xmin) / q_max
             zero = torch.round(-xmin / scale)
 
+            # expand 回原始形状
             scale = scale.repeat(1, reshaped_x.shape[-1]).reshape(init_shape)
             zero = zero.repeat(1, reshaped_x.shape[-1]).reshape(init_shape)
 
