@@ -6,6 +6,7 @@ pip install -U huggingface_hub
 export HF_ENDPOINT=https://hf-mirror.com
 
 cd /PATH/Quantized-Reasoning-Models
+# 以下数据集如有不能直接下载，请在网页上手动下载后上传到指定文件夹
 # AIME_2024
 huggingface-cli download --repo-type dataset --resume-download Maxwell-Jia/AIME_2024 --local-dir ./datasets/AIME_2024
 # AIME_90
@@ -18,7 +19,7 @@ huggingface-cli download --repo-type dataset --resume-download HuggingFaceH4/MAT
 huggingface-cli download --repo-type dataset --resume-download AI-MO/NuminaMath-1.5 --local-dir ./datasets/NuminaMath-1.5
 # GSM8K
 huggingface-cli download --repo-type dataset --resume-download openai/gsm8k --local-dir ./datasets/gsm8k
-# gpqa:diamond，如果不能直接下载请在网页上手动下载后上传到指定文件夹
+# gpqa:diamond
 huggingface-cli download --repo-type dataset --resume-download Idavidrein/gpqa --local-dir ./datasets/gpqa
 ```
 gpqa:diamond数据文件需要先进行预处理转换成.parquet格式才能被正常读取：
