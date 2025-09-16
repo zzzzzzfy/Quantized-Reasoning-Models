@@ -7,6 +7,12 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 cd /PATH/Quantized-Reasoning-Models
 # 以下数据集如有不能直接下载，请在网页上手动下载后上传到指定文件夹
+# wikitext
+huggingface-cli download --repo-type dataset --resume-download Salesforce/wikitext --local-dir ./datasets/wikitext
+# pile-val-backup
+huggingface-cli download --repo-type dataset --resume-download mit-han-lab/pile-val-backup --local-dir ./datasets/pile-val-backup
+# code_generation_lite
+huggingface-cli download --repo-type dataset --resume-download livecodebench/code_generation_lite  --local-dir ./datasets/code_generation_lite
 # AIME_2024
 huggingface-cli download --repo-type dataset --resume-download Maxwell-Jia/AIME_2024 --local-dir ./datasets/AIME_2024
 # AIME_90
