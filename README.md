@@ -3,32 +3,11 @@
 ## 环境配置
 这是使用华为昇腾910B进行测试的npu适配版本，基于vllm_ascend镜像进行docker构建和环境配置。具体的环境配置如下：
 ```shell
-#!/bin/bash
-
-# Update the vllm-ascend image
-export IMAGE=quay.io/ascend/vllm-ascend:v0.10.0rc1
-
-# 请根据自己的实际情况和需要修改device对应的npu序号
-# 镜像内的Python版本为3.11
-docker run --name vllm-ascend01 \
-    --device=/dev/davinci_manager \
-    --device=/dev/devmm_svm \
-    --device=/dev/hisi_hdc \
-    --device=/dev/davinci0 \
-    --device=/dev/davinci1 \
-    --device=/dev/davinci2 \
-    --device=/dev/davinci3 \
-    -v /usr/local/dcmi:/usr/local/dcmi \
-    -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
-    -v /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/ \
-    -v /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info \
-    -v /etc/ascend_install.info:/etc/ascend_install.info \
-    -v /root/.cache:/root/.cache \
-    -v /data:/data \
-    -p 8001:8000 \
-    -it -d $IMAGE bash
-
 cd /PATH/Quantized-Reasoning-Models
+# 创建容器
+bash docker_start.sh
+
+# 进入容器后继续以下操作
 # 相比于原版删除了transformers库和torch库的下载
 # 镜像内transformers库的默认版本是4.53.3，torch库的默认版本是2.7.1+cpu，torch_npu库的默认版本是2.7.1.dev20250724
 # 为适配vllm_ascend均不能修改
@@ -37,7 +16,6 @@ pip install -r requirements.txt
 pip install -e ./third-party/lighteval
 pip install -e ./third-party/lighteval[math]
 ```
-推荐使用bash命令直接运行.sh文件。
 
 数据集和模型文件的配置请参考 ./datasets/readme.md。
 
