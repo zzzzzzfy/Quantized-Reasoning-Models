@@ -2,6 +2,9 @@
 
 使用hf-mirror
 ```shell
+pip install -U huggingface_hub
+export HF_ENDPOINT=https://hf-mirror.com
+
 cd /PATH/Quantized-Reasoning-Models
 # AIME_2024
 huggingface-cli download --repo-type dataset --resume-download Maxwell-Jia/AIME_2024 --local-dir ./datasets/AIME_2024
