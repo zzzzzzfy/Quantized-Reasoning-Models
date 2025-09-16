@@ -46,8 +46,8 @@ def main():
         if args.save_matrix and not args.reload_matrix:
             # 这里也要不保存最后一层的量化参数
             flat_utils.save_flat_matrices(args, model)
-        # 这里在npu上需要考虑注释掉，具体的原因还不清楚
-        # flat_utils.reparameterize_model(model)
+        # 这里可以通过选择是否注释重参数化函数（源代码中使用）来探究性质
+        flat_utils.reparameterize_model(model)
         logger.info("Finished reparameterize model.")
 
     if args.w_bits < 16:
