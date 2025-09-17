@@ -1,3 +1,5 @@
+# 该测试代码适用于原模型和flatquant未做重参数化的推理测试情况
+
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
