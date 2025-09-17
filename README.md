@@ -54,27 +54,32 @@ nohup bash scripts/quantization/awq.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > o
 # flatquant方法，需要修改参数请到对应的flatquant.sh文件
 nohup bash scripts/quantization/flatquant.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_flatquant.log 2>&1 &
 ```
+量化后模型默认保存到 ./outputs/modelzoo/method_name/ 文件夹
 ### 评测
 ```shell
 # 评测该代码库量化后的模型只需要更改模型读取路径，可以添加参数seed来改变随机数种子，默认seed=42
 nohup bash scripts/inference/inference.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 0,1,2,3 > output_test.log 2>&1 &
+nohup bash scripts/inference/inference.sh ./outputs/modelzoo/flatquant/DeepSeek-R1-Distill-Qwen-7B-flatquant-w8a8kv8-tp4 0,1,2,3 > output_test.log 2>&1 &
+# 添加随机数种子的示例
 nohup bash scripts/inference/inference.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 0,1,2,3 43 > output_test.log 2>&1 &
 
 # 完成全部评测后可以将结果通过表格的形式进行打印
 python -m make_stats_table --stats acc --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42        # 测试准确率
 python -m make_stats_table --stats length --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42     # 测试所需的推理长度
 ```
-备注：FlatQuant方法量化后的模型暂时不能通过该方法正常进行读取和评测，还在修改。
+评测结果会默认保存到 ./outputs/inference/ 文件夹下。
+
+备注：对于FlatQuant模型，正常使用重参数化请注意注意模型的config文件中使用自定义的Qwen2FlatQuantForCausalLM类，不使用重参数化则模型的config文件中使用Qwen2ForCausalLM类。另外FlatQuant模型由于使用自定义类注册进vllm来进行评测，速度慢是正常的。速度慢和速度不稳定现象的原因尚待探明。
 ### 推理测试
 用于检测模型能否完成简单的对话推理任务：
 ```shell
 # 需要修改python文件中的模型读取路径
-# 测试模型能否通过vllm_ascend库正常进行推理，代码文件中的伪量化类注释掉了，进行测试时请自行取消注释
+# 测试模型能否通过vllm_ascend库正常进行推理
 python test1.py
 # 测试模型能否通过transformers库正常进行推理
 python test2.py
 ```
-备注：FlatQuant方法量化后的模型可以通过transformers库进行推理，暂时不能通过vllm_ascend进行推理。
+备注：正常使用FlatQuant方法量化后的模型，由于使用了重参数化，需要适配自定义的Qwen2FlatQuantForCausalLM类和相关的一系列自定义类，所以使用transformers库中的默认类进行推理，生成乱码是正常现象。如果FlatQuant方法中不进行重参数化，那么应该使用默认类进行推理来正常生成。
 
 原代码库的Readme文件如下所示：
 # Quantization Hurts Reasoning? An Empirical Study on Quantized Reasoning Models
