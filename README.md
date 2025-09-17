@@ -56,8 +56,10 @@ nohup bash scripts/quantization/flatquant.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4
 ```
 ### 评测
 ```shell
-# 评测该代码库量化后的模型只需要更改模型读取路径
-nohup bash scripts/inference/inference.sh /data/disk2/modelzoo/DeepSeek-R1-Distill-Qwen-7B 0,1,2,3 > output_test.log 2>&1 &
+# 评测该代码库量化后的模型只需要更改模型读取路径，可以添加参数seed来改变随机数种子，默认seed=42
+nohup bash scripts/inference/inference.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 0,1,2,3 > output_test.log 2>&1 &
+nohup bash scripts/inference/inference.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 0,1,2,3 43 > output_test.log 2>&1 &
+
 # 完成全部评测后可以将结果通过表格的形式进行打印
 python -m make_stats_table --stats acc --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42        # 测试准确率
 python -m make_stats_table --stats length --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42     # 测试所需的推理长度
