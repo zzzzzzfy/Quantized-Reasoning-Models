@@ -38,7 +38,7 @@ pip install -e ./third-party/lighteval[math]
   ```python
   for layer in range(model.config.num_hidden_layers-1):
   ```
-### 测试表明重参数化方法可能会显著影响量化后模型的推理效果，具体原因还在研究，请按如下说明选择性使用：
+### 测试表明重参数化方法可能会显著影响量化后模型的推理效果和需要选用的class，具体原因还在研究，请按如下说明选择性使用：
 * ./methods/flatquant/main.py line 50：
     ```python
     # 这里可以通过选择是否注释重参数化函数（源代码中使用）来探究性质
