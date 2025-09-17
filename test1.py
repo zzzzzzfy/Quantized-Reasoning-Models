@@ -1,4 +1,4 @@
-# 该测试代码适用于原模型和flatquant方法的全部情况
+# 该测试代码适用于原模型和flatquant方法全部情况下的推理测试
 # 请注意，做过重参数化的flatquant方法需要模型config文件中声明使用Qwen2FlatQuantForCausalLM类
 # 未做过重参数化的flatquant方法的模型config文件中声明使用Qwen2ForCausalLM类
 
