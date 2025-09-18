@@ -66,6 +66,8 @@ nohup bash scripts/inference/inference.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 0,1,
 # 完成全部评测后可以将结果通过表格的形式进行打印
 python -m make_stats_table --stats acc --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42        # 测试准确率
 python -m make_stats_table --stats length --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42     # 测试所需的推理长度
+# 测试量化后自动保存的模型，示例如下
+python -m make_stats_table --stats acc --models DeepSeek-R1-Distill-Qwen-7B --methods flatquant-w4a4kv4 --seeds 42 
 ```
 评测结果会默认保存到 ./outputs/inference/ 文件夹下。
 
