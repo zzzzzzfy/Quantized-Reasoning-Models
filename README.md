@@ -62,13 +62,20 @@ nohup bash scripts/inference/inference.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 0,1,
 nohup bash scripts/inference/inference.sh ./outputs/modelzoo/flatquant/DeepSeek-R1-Distill-Qwen-7B-flatquant-w8a8kv8-tp4 0,1,2,3 > output_test.log 2>&1 &
 # 添加随机数种子的示例
 nohup bash scripts/inference/inference.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 0,1,2,3 43 > output_test.log 2>&1 &
+```
+完成全部评测后可以将结果通过表格的形式进行打印，如果原模型文件没有存在项目目录中，请修改make_stats_table.py文件中line 90为：
+```shell
+# modelzoo_dir = "./modelzoo/QwQ" if "QwQ" in model else "./modelzoo/DeepSeek-R1"
+modelzoo_dir = "root_path_to_your_model"
+```
 
-# 完成全部评测后可以将结果通过表格的形式进行打印
+```shell
 python -m make_stats_table --stats acc --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42        # 测试准确率
 python -m make_stats_table --stats length --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42     # 测试所需的推理长度
 # 测试量化后自动保存的模型，示例如下
 python -m make_stats_table --stats acc --models DeepSeek-R1-Distill-Qwen-7B --methods flatquant-w4a4kv4 --seeds 42 
 ```
+
 评测结果会默认保存到 ./outputs/inference/ 文件夹下。
 
 备注：对于FlatQuant模型，正常使用重参数化请注意注意模型的config文件中使用自定义的Qwen2FlatQuantForCausalLM类，不使用重参数化则模型的config文件中使用Qwen2ForCausalLM类。另外FlatQuant模型由于使用自定义类注册进vllm来进行评测，速度慢是正常的。速度慢和速度不稳定现象的原因尚待探明。
