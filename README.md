@@ -69,6 +69,7 @@ nohup bash scripts/inference/inference.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 0,1,
 modelzoo_dir = "root_path_to_your_model"
 ```
 
+之后正常使用表格生成的代码：
 ```shell
 python -m make_stats_table --stats acc --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42        # 测试准确率
 python -m make_stats_table --stats length --models DeepSeek-R1-Distill-Qwen-7B --methods "" --seeds 42     # 测试所需的推理长度
