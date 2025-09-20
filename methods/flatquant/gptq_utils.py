@@ -5,11 +5,13 @@ import torch
 import torch.nn as nn
 import logging
 
+import torch_npu
+
 from .flatquant.utils import cleanup_memory
 from .flatquant.quant_utils import WeightQuantizer
 
-torch.backends.cuda.matmul.allow_tf32 = False
-torch.backends.cudnn.allow_tf32 = False
+# torch.backends.cuda.matmul.allow_tf32 = False
+# torch.backends.cudnn.allow_tf32 = False
 
 
 def find_qlayers(module, layers=[torch.nn.Linear, ], name=''):
@@ -148,7 +150,8 @@ class GPTQ:
 
             W[:, i2:] -= Err1.matmul(Hinv[i1:i2, i2:])
 
-        torch.cuda.synchronize()
+        # torch.cuda.synchronize()
+        torch.npu.synchronize()
 
         if actorder:
             Q = Q[:, invperm]
@@ -164,7 +167,7 @@ class GPTQ:
         self.H = None
         self.Losses = None
         self.Trace = None
-        torch.cuda.empty_cache()
+        torch.npu.empty_cache()
         cleanup_memory(verbose=False)
         
         
@@ -201,7 +204,13 @@ def gptq_fwrd(model, dataloader, dev, args):
             cache['i'] += 1
             cache['attention_mask'] = kwargs['attention_mask']
             cache['position_ids'] = kwargs['position_ids']
-            raise ValueError
+            raise ValueError        
+        def __getattr__(self, name):
+        # 除了module和本地属性，其他都转发给self.module
+            if name in ["module", "forward"]:
+                return super().__getattr__(name)
+            return getattr(self.module, name)
+        
     layers[0] = Catcher(layers[0])
     for batch in dataloader:
         try:
@@ -213,7 +222,7 @@ def gptq_fwrd(model, dataloader, dev, args):
     layers[0] = layers[0].cpu()
     model.model.embed_tokens = model.model.embed_tokens.cpu()
     model.model.norm = model.model.norm.cpu()
-    torch.cuda.empty_cache()
+    torch.npu.empty_cache()
 
     outs = torch.zeros_like(inps)
     attention_mask = cache['attention_mask']
@@ -287,7 +296,7 @@ def gptq_fwrd(model, dataloader, dev, args):
         layers[i] = layer.cpu()
         del layer
         del gptq 
-        torch.cuda.empty_cache()
+        torch.npu.empty_cache()
 
         inps, outs = outs, inps
 
@@ -305,7 +314,7 @@ def rtn_fwrd(model, dev, args):
     '''
     assert args.w_groupsize ==-1, "Groupsize not supported in RTN!"
     layers = model.model.layers
-    torch.cuda.empty_cache()
+    torch.npu.empty_cache()
 
     quantizers = {}
 
@@ -338,7 +347,7 @@ def rtn_fwrd(model, dev, args):
             subset[name].weight.data = quantizer.quantize(W).to(w_dtype)
             quantizers['model.layers.%d.%s' % (i, name)] = quantizer.cpu()
         layers[i] = layer.cpu()
-        torch.cuda.empty_cache()
+        torch.npu.empty_cache()
         del layer
             
     cleanup_memory(verbose=True)
