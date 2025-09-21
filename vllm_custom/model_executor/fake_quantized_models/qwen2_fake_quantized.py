@@ -56,6 +56,10 @@ from vllm.model_executor.models.utils import (AutoWeightsLoader, PPMissingLayer,
                     make_empty_intermediate_tensors_factory, make_layers,
                     maybe_prefix)
 
+# 加给vllm_ascend的
+from vllm_ascend.quantization.quant_config import AscendQuantConfig
+from vllm.forward_context import get_forward_context
+
 from vllm_custom.model_executor.layers.quantization.utils.fake_quant_utils import ActivationQuantizer
 
 logger = init_logger(__name__)
@@ -69,7 +73,8 @@ class Qwen2MLP(nn.Module):
         intermediate_size: int,
         hidden_act: str,
         fake_quant_config: dict,
-        quant_config: Optional[QuantizationConfig] = None,
+        # quant_config: Optional[QuantizationConfig] = None,
+        quant_config: Optional[AscendQuantConfig] = None,
         prefix: str = "",
     ) -> None:
         super().__init__()
@@ -117,7 +122,8 @@ class Qwen2Attention(nn.Module):
                  rope_theta: float = 10000,
                  fake_quant_config: dict = None,
                  cache_config: Optional[CacheConfig] = None,
-                 quant_config: Optional[QuantizationConfig] = None,
+                 # quant_config: Optional[QuantizationConfig] = None,
+                 quant_config: Optional[AscendQuantConfig] = None,
                  rope_scaling: Optional[Tuple] = None,
                  prefix: str = "",
                  attn_type: str = AttentionType.DECODER) -> None:
@@ -185,12 +191,12 @@ class Qwen2Attention(nn.Module):
                                                 lac=False, groupsize=fake_quant_config["k_groupsize"], clip_ratio=fake_quant_config["k_clip_ratio"])
         self.v_cache_quant = ActivationQuantizer(bits=fake_quant_config["v_bits"], sym=not fake_quant_config["v_asym"],
                                                 lac=False, groupsize=fake_quant_config["v_groupsize"], clip_ratio=fake_quant_config["v_clip_ratio"])
-
+ 
     def forward(
         self,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
-        kv_cache: torch.Tensor,
+        kv_cache: torch.Tensor, 
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         hidden_states = self.qkv_quant(hidden_states)
@@ -199,7 +205,9 @@ class Qwen2Attention(nn.Module):
         q, k = self.rotary_emb(positions, q, k)
         k = self.k_cache_quant(k)
         v = self.v_cache_quant(v)
-        attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
+        # 参考vllm.Attention，这里用原来的就会报错
+        # attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
+        attn_output = self.attn(q, k, v)
         attn_output = self.o_quant(attn_output)
         output, _ = self.o_proj(attn_output)
         return output
@@ -211,7 +219,8 @@ class Qwen2DecoderLayer(nn.Module):
         self,
         config: Qwen2Config,
         cache_config: Optional[CacheConfig] = None,
-        quant_config: Optional[QuantizationConfig] = None,
+        # quant_config: Optional[QuantizationConfig] = None,
+        quant_config: Optional[AscendQuantConfig] = None,
         prefix: str = "",
     ) -> None:
         super().__init__()
@@ -259,9 +268,9 @@ class Qwen2DecoderLayer(nn.Module):
         self,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
-        kv_cache: torch.Tensor,
-        attn_metadata: AttentionMetadata,
-        residual: Optional[torch.Tensor],
+        kv_cache: torch.Tensor=None,
+        attn_metadata: AttentionMetadata=None,
+        residual: Optional[torch.Tensor]=None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         # Self Attention
         if residual is None:
@@ -350,12 +359,13 @@ class Qwen2Model(nn.Module):
     def get_input_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
         return self.embed_tokens(input_ids)
 
+    # 仿照vllm_ascend.models.deepseek_v2修改, 允许kv_cache和attn_metadata为None
     def forward(
         self,
         input_ids: torch.Tensor,
         positions: torch.Tensor,
-        kv_caches: List[torch.Tensor],
-        attn_metadata: AttentionMetadata,
+        kv_caches: List[torch.Tensor]=None,
+        attn_metadata: AttentionMetadata=None,
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
@@ -374,7 +384,8 @@ class Qwen2Model(nn.Module):
             hidden_states, residual = layer(
                 positions,
                 hidden_states,
-                kv_caches[i - self.start_layer],
+                # 仿照vllm_ascend.models.deepseek_v2修改
+                kv_caches[i - self.start_layer] if kv_caches is not None else None,
                 attn_metadata,
                 residual,
             )
@@ -500,12 +511,13 @@ class Qwen2FakeQuantizedForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     def get_input_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
         return self.model.get_input_embeddings(input_ids)
 
+    # 仿照vllm_ascend.models.deepseek_v2修改, 允许kv_cache和attn_metadata为None
     def forward(
         self,
         input_ids: torch.Tensor,
         positions: torch.Tensor,
-        kv_caches: List[torch.Tensor],
-        attn_metadata: AttentionMetadata,
+        kv_caches: List[torch.Tensor]=None,
+        attn_metadata: AttentionMetadata=None,
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
