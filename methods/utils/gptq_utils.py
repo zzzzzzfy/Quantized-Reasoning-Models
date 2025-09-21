@@ -9,8 +9,8 @@ import torch.nn as nn
 from . import utils
 from . import quant_utils
 
-torch.backends.cuda.matmul.allow_tf32 = False
-torch.backends.cudnn.allow_tf32 = False
+# torch.backends.cuda.matmul.allow_tf32 = False
+# torch.backends.cudnn.allow_tf32 = False
 
 
 class GPTQ:
@@ -138,7 +138,7 @@ class GPTQ:
 
             W[:, i2:] -= Err1.matmul(Hinv[i1:i2, i2:])
 
-        torch.cuda.synchronize()
+        torch.npu.synchronize()
 
         if actorder:
             Q = Q[:, invperm]
@@ -154,14 +154,14 @@ class GPTQ:
         self.H = None
         self.Losses = None
         self.Trace = None
-        torch.cuda.empty_cache()
+        torch.npu.empty_cache()
         utils.cleanup_memory(verbos=False)
         
         
 @torch.no_grad()
 def gptq_fwrd(model, dataloader, dev, args):
     '''
-    From GPTQ repo
+    From GPTQ repo 
     '''
     logging.info('-----GPTQ Quantization-----')
     
@@ -191,6 +191,11 @@ def gptq_fwrd(model, dataloader, dev, args):
             cache['attention_mask'] = kwargs['attention_mask']
             cache['position_ids'] = kwargs['position_ids']
             raise ValueError
+        def __getattr__(self, name):
+        # 除了module和本地属性，其他都转发给self.module
+            if name in ["module", "forward"]:
+                return super().__getattr__(name)
+            return getattr(self.module, name)
     layers[0] = Catcher(layers[0])
     for batch in dataloader:
         try:
@@ -202,7 +207,7 @@ def gptq_fwrd(model, dataloader, dev, args):
     layers[0] = layers[0].cpu()
     model.model.embed_tokens = model.model.embed_tokens.cpu()
     model.model.norm = model.model.norm.cpu()
-    torch.cuda.empty_cache()
+    torch.npu.empty_cache()
 
     outs = torch.zeros_like(inps)
     attention_mask = cache['attention_mask']
@@ -254,7 +259,10 @@ def gptq_fwrd(model, dataloader, dev, args):
             for name in subset:
                 handles.append(subset[name].register_forward_hook(add_batch(name)))
             for j in range(args.nsamples):
-                outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
+                # 构造position_embeddings
+                position_embeddings = model.model.rotary_emb(inps[j], position_ids)
+                # 注意这里必须显式传入position_embeddings参数（可能因为transformers库版本不同），并且每层都要重新计算，Catcher只捕获第0层的，不能一直用那个
+                outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids, position_embeddings=position_embeddings)[0]
             for h in handles:
                 h.remove()
 
@@ -275,12 +283,15 @@ def gptq_fwrd(model, dataloader, dev, args):
                 gptq[name].free()
 
         for j in range(args.nsamples):
-            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
+            # 构造position_embeddings
+            position_embeddings = model.model.rotary_emb(inps[j], position_ids)
+            # 注意这里必须显式传入position_embeddings参数（可能因为transformers库版本不同），并且每层都要重新计算，Catcher只捕获第0层的，不能一直用那个
+            outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids, position_embeddings=position_embeddings)[0]
 
         layers[i] = layer.cpu()
         del layer
         del gptq 
-        torch.cuda.empty_cache()
+        torch.npu.empty_cache()
 
         inps, outs = outs, inps
 
@@ -296,7 +307,7 @@ def rtn_fwrd(model, dev, args):
     From GPTQ repo
     '''
     layers = model.model.layers
-    torch.cuda.empty_cache()
+    torch.npu.empty_cache()
 
     quantizers = {}
 
@@ -330,7 +341,7 @@ def rtn_fwrd(model, dev, args):
                 next(iter(layer.parameters())).dtype)
             quantizers['model.layers.%d.%s' % (i, name)] = quantizer.cpu()
         layers[i] = layer.cpu()
-        torch.cuda.empty_cache()
+        torch.npu.empty_cache()
         del layer
             
     utils.cleanup_memory(verbos=True)
