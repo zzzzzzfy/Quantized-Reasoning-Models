@@ -1,9 +1,9 @@
 import math
 import transformers
 import torch
-import fast_hadamard_transform
+# import fast_hadamard_transform
 
-from . import hadamard_utils
+# from . import hadamard_utils
 
 
 def get_minq_maxq(bits, sym):
