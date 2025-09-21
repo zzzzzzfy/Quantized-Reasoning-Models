@@ -10,9 +10,10 @@ from accelerate.utils import get_balanced_memory
 
 
 # These flags disable using TensorFloat-32 tensor cores (to avoid numerical issues)
-torch.backends.cuda.matmul.allow_tf32 = False
-torch.backends.cudnn.allow_tf32 = False
-DEV = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
+# torch.backends.cuda.matmul.allow_tf32 = False
+# torch.backends.cudnn.allow_tf32 = False
+# DEV = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
+DEV = torch.device('npu:0') if torch.npu.is_available() else torch.device('cpu')
 
 
 def set_seed(seed):
@@ -163,15 +164,15 @@ def cleanup_memory(verbos=True) -> None:
         pass
 
     def total_reserved_mem() -> int:
-        return sum(torch.cuda.memory_reserved(device=i) for i in range(torch.cuda.device_count()))
+        return sum(torch.npu.memory_reserved(device=i) for i in range(torch.npu.device_count()))
 
     memory_before = total_reserved_mem()
 
     # gc.collect and empty cache are necessary to clean up GPU memory if the model was distributed
     gc.collect()
 
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+    if torch.npu.is_available():
+        torch.npu.empty_cache()
         memory_after = total_reserved_mem()
         if verbos:
             logging.info(
