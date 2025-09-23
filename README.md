@@ -1,5 +1,13 @@
 # npu上的代码适配
 暂时只做了模型DeepSeek-R1-Distill-Qwen-7B的awq和flatquant方法的适配修改。
+
+## 目录
+
+- [环境配置](#环境配置)
+- [代码使用](#代码使用)
+- [量化方法说明](#量化方法说明)
+
+
 ## 环境配置
 这是使用华为昇腾910B进行测试的npu适配版本，基于vllm_ascend镜像进行docker构建和环境配置。具体的环境配置如下：
 ```shell
@@ -19,31 +27,6 @@ pip install -e ./third-party/lighteval[math]
 ```
 
 数据集和模型文件的配置请参考 ./datasets/readme.md。
-
-## 关于FlatQuant方法的修改说明
-### 在FlatQuant方法中，如果需要不进行最后一层的量化，请按如下说明修改代码：
-* ./methods/flatquant/flatquant/train_utils.py line 99:
-  ```python
-  for i in range(num_train_layer-1):
-  ```
-* ./methods/flatquant/flatquant/flat_utils.py line 34:
-  ```python
-  for idx in range(model.config.num_hidden_layers-1):
-  ```
-  line 86:
-  ```python
-  for i in range(len(model.model.layers)-1):
-  ```
-* ./methods/flatquant/flatquant/model_tools/qwen_utils.py line 359:
-  ```python
-  for layer in range(model.config.num_hidden_layers-1):
-  ```
-### 测试表明重参数化方法可能会显著影响量化后模型的推理效果和需要选用的class，具体原因还在研究，请按如下说明选择性使用：
-* ./methods/flatquant/main.py line 50：
-    ```python
-    # 这里可以通过选择是否注释重参数化函数（源代码中使用）来探究性质
-    flat_utils.reparameterize_model(model)
-    ```
 
 ## 代码使用
 使用命令行运行，推荐使用后台挂载方式，以便退出容器和服务器时能够正常继续运行，并且可以随时查看npu的使用情况：
@@ -90,6 +73,31 @@ python test1.py
 python test2.py
 ```
 备注：正常使用FlatQuant方法量化后的模型，由于使用了重参数化，需要适配自定义的Qwen2FlatQuantForCausalLM类和相关的一系列自定义类，所以使用transformers库中的默认类进行推理，生成乱码是正常现象。如果FlatQuant方法中不进行重参数化，那么应该使用默认类进行推理来正常生成。
+
+## 关于FlatQuant方法的修改说明
+### 在FlatQuant方法中，如果需要不进行最后一层的量化，请按如下说明修改代码：
+* ./methods/flatquant/flatquant/train_utils.py line 99:
+  ```python
+  for i in range(num_train_layer-1):
+  ```
+* ./methods/flatquant/flatquant/flat_utils.py line 34:
+  ```python
+  for idx in range(model.config.num_hidden_layers-1):
+  ```
+  line 86:
+  ```python
+  for i in range(len(model.model.layers)-1):
+  ```
+* ./methods/flatquant/flatquant/model_tools/qwen_utils.py line 359:
+  ```python
+  for layer in range(model.config.num_hidden_layers-1):
+  ```
+### 测试表明重参数化方法可能会显著影响量化后模型的推理效果和需要选用的class，具体原因还在研究，请按如下说明选择性使用：
+* ./methods/flatquant/main.py line 50：
+    ```python
+    # 这里可以通过选择是否注释重参数化函数（源代码中使用）来探究性质
+    flat_utils.reparameterize_model(model)
+    ```
 
 原代码库的Readme文件如下所示：
 # Quantization Hurts Reasoning? An Empirical Study on Quantized Reasoning Models
