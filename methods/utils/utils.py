@@ -138,7 +138,14 @@ def parser_gen():
         action="store_true",
         help="Distribute the model on multiple GPUs for evaluation.",
     )
-
+    
+    # 添加是否进行ppl评测的选项
+    parser.add_argument("--ppl", action="store_true", help="Whether to evaluate the ppl of the quantized model.")
+    parser.add_argument(
+        "--distribute_model",
+        action="store_true",
+        help="Distribute the model across multiple GPUs for evaluation.")
+    
     args = parser.parse_args()
 
     config_logging()
