@@ -7,8 +7,7 @@ from ..utils import model_utils
 from ..utils import data_utils
 from ..utils import quant_utils
 from ..utils import gptq_utils
-from ..utils import hadamard_utils
-from . import rotation_utils
+from ..utils import eval_utils
 
 
 def main():
@@ -20,6 +19,11 @@ def main():
 
     # Rotate the weights
     if args.rotate:
+        # npu不支持哈达玛变换，quarot方法中只在做旋转时使用，只做gptq时不涉及
+        # 所以将旋转方法和哈达玛变化方法的调用移动到这里
+        from . import rotation_utils
+        from ..utils import hadamard_utils
+        
         rotation_utils.fuse_layer_norms(model)
         rotation_utils.rotate_model(model, args)
         utils.cleanup_memory(verbos=True)
@@ -98,6 +102,29 @@ def main():
         }
         model.config.save_pretrained(args.save_qmodel_path)
         print(f"Model saved at {args.save_qmodel_path}.")
+       
+       
+    if args.ppl: 
+        if args.distribute_model:
+            utils.distribute_model(model)
+        else:
+            model.to(utils.DEV)
+        
+        # Evaluating PPL
+        for eval_dataset in ["wikitext2"]:
+            # logger.info(eval_dataset)
+            testloader = data_utils.get_loaders(
+                    eval_dataset,
+                    seed=args.seed,
+                    model=args.model,
+                    seqlen=model.seqlen,
+                    hf_token=args.hf_token,
+                    eval_mode=True
+                )
+            dataset_ppl = eval_utils.ppl_eval(model, testloader)
+            # logger.info(dataset_ppl)
+            print("PPL on {}: {}".format(eval_dataset, dataset_ppl))
+
 
 
 if __name__ == '__main__':
