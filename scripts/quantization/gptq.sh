@@ -14,5 +14,6 @@ for BITS in "${bits[@]}"; do
         --w_bits ${BITS} --w_clip --w_asym --w_groupsize 128 --act_order \
         --tp ${tp} \
         --save_qmodel_path ./outputs/modelzoo/gptq/${model_name}-gptq-w${BITS}g128-tp${tp} \
-        --cal_dataset reasoning-numina-math-1.5
+        --cal_dataset reasoning-numina-math-1.5 \
+        --ppl
 done
