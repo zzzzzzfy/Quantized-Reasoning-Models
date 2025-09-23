@@ -7,7 +7,8 @@ from ..utils import utils
 from ..utils import model_utils
 from ..utils import gptq_utils
 from ..utils import data_utils
-from . import smoothquant_utils
+from ..utils import eval_utils
+from . import smoothquant_utils  
 
 
 def main():
@@ -78,6 +79,27 @@ def main():
         }
         model.config.save_pretrained(args.save_qmodel_path)
         print(f"Model saved at {args.save_qmodel_path}.")
+        
+    if args.ppl: 
+        if args.distribute_model:
+            utils.distribute_model(model)
+        else:
+            model.to(utils.DEV)
+        
+        # Evaluating PPL
+        for eval_dataset in ["wikitext2"]:
+            # logger.info(eval_dataset)
+            testloader = data_utils.get_loaders(
+                    eval_dataset,
+                    seed=args.seed,
+                    model=args.model,
+                    seqlen=model.seqlen,
+                    hf_token=args.hf_token,
+                    eval_mode=True
+                )
+            dataset_ppl = eval_utils.ppl_eval(model, testloader)
+            # logger.info(dataset_ppl)
+            print("PPL on {}: {}".format(eval_dataset, dataset_ppl))
 
 
 if __name__ == '__main__':
