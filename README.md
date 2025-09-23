@@ -29,11 +29,17 @@ pip install -e ./third-party/lighteval[math]
 数据集和模型文件的配置请参考 ./datasets/readme.md。
 
 ## 代码使用
+进行代码使用前请先参考(#量化方法说明)。
+
 使用命令行运行，推荐使用后台挂载方式，以便退出容器和服务器时能够正常继续运行，并且可以随时查看npu的使用情况：
 ### 量化
 ```shell
 # awq方法，需要修改参数请到对应的awq.sh文件
 nohup bash scripts/quantization/awq.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_awq.log 2>&1 &
+# gptq方法，需要修改参数请到对应的gptq.sh文件
+nohup bash scripts/quantization/gptq.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_gptq.log 2>&1
+# smoothquant方法，需要修改参数请到对应的smoothquant.sh文件
+nohup bash scripts/quantization/smoothquant.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_smoothquant.log 2>&1 &
 # flatquant方法，需要修改参数请到对应的flatquant.sh文件
 nohup bash scripts/quantization/flatquant.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_flatquant.log 2>&1 &
 ```
@@ -74,8 +80,21 @@ python test2.py
 ```
 备注：正常使用FlatQuant方法量化后的模型，由于使用了重参数化，需要适配自定义的Qwen2FlatQuantForCausalLM类和相关的一系列自定义类，所以使用transformers库中的默认类进行推理，生成乱码是正常现象。如果FlatQuant方法中不进行重参数化，那么应该使用默认类进行推理来正常生成。
 
-## 关于FlatQuant方法的修改说明
-### 在FlatQuant方法中，如果需要不进行最后一层的量化，请按如下说明修改代码：
+## 量化方法说明
+### PPL说明
+除FlatQuant量化代码中带有PPL计算的代码外，其余量化方法中额外添加了args.ppl来控制是否进行困惑度计算（由于vllm_ascend不支持tasks=embed，不能在评测中计算PPL）。如需使用，请在对应的.sh文件中添加--ppl参数。
+### GPTQ
+构造基于NuminaMath-1.5的校准数据集参考下面SmoothQuant的情况。
+
+gptq.sh 中使用的是quarot_gptq.py不做旋转操作的代码，QuaRot方法中的旋转操作要使用快速哈达玛变换，npu暂不支持。
+### SmoothQuant
+进行smoothquant量化前，请先构造基于NuminaMath-1.5的校准数据集：
+  ```shell
+  bash scripts/data/gen_calib.sh /data/disk1/modelzoo/DeepSeek-R1-Distill-Qwen-7B 0,1,2,3
+  ```
+校准数据集会自动存放到 ./datasets/gen_data/DeepSeek-R1-Distill-Qwen-7B/NuminaMath-1.5.jsonl 路径下，由代码在后续过程中自主读取。
+### FlatQuant
+在FlatQuant方法中，如果需要不进行最后一层的量化，请按如下说明修改代码：
 * ./methods/flatquant/flatquant/train_utils.py line 99:
   ```python
   for i in range(num_train_layer-1):
@@ -92,7 +111,8 @@ python test2.py
   ```python
   for layer in range(model.config.num_hidden_layers-1):
   ```
-### 测试表明重参数化方法可能会显著影响量化后模型的推理效果和需要选用的class，具体原因还在研究，请按如下说明选择性使用：
+
+测试表明重参数化方法可能会显著影响量化后模型的推理效果和需要选用的class，具体原因还在研究，请按如下说明选择性使用：
 * ./methods/flatquant/main.py line 50：
     ```python
     # 这里可以通过选择是否注释重参数化函数（源代码中使用）来探究性质
