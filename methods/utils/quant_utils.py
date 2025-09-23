@@ -1,9 +1,6 @@
 import math
 import transformers
 import torch
-# import fast_hadamard_transform
-
-# from . import hadamard_utils
 
 
 def get_minq_maxq(bits, sym):
@@ -228,12 +225,14 @@ class ActQuantWrapper(torch.nn.Module):
 
         # Rotate, if needed
         if self.online_full_had:
+            from . import hadamard_utils
             init_shape = x.shape
             x = x.reshape(-1, self.had_dim)
             x = hadamard_utils.matmul_hadU_cuda(x, self.had_K, self.K)
             x = x.reshape(init_shape)
             
         elif self.online_partial_had:
+            import fast_hadamard_transform
             # todo: implement this in QAttention to avoid reshaping!
             init_shape = x.shape
             if self.K == 1:
