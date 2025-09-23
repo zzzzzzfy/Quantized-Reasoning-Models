@@ -37,7 +37,7 @@ pip install -e ./third-party/lighteval[math]
 # awq方法，需要修改参数请到对应的awq.sh文件
 nohup bash scripts/quantization/awq.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_awq.log 2>&1 &
 # gptq方法，需要修改参数请到对应的gptq.sh文件
-nohup bash scripts/quantization/gptq.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_gptq.log 2>&1
+nohup bash scripts/quantization/gptq.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_gptq.log 2>&1 &
 # smoothquant方法，需要修改参数请到对应的smoothquant.sh文件
 nohup bash scripts/quantization/smoothquant.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4 0 > output_smoothquant.log 2>&1 &
 # flatquant方法，需要修改参数请到对应的flatquant.sh文件
