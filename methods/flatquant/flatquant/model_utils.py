@@ -50,7 +50,9 @@ def get_qwen2(model_name, seqlen, hf_token):
 
 # Unified model loading function
 def get_model(model_name, seqlen, hf_token=None):
-    if 'llama-3.1' in model_name.lower() or "DeepSeek-R1-Distill-Llama" in model_name:
+    # 修改使其接受llama其他模型
+    # if 'llama-3.1' in model_name.lower() or "DeepSeek-R1-Distill-Llama" in model_name:
+    if 'llama' in model_name.lower() or "DeepSeek-R1-Distill-Llama" in model_name:
         return get_llama_31(model_name, seqlen, hf_token)
     elif 'qwen-2.5' in model_name or "DeepSeek-R1-Distill-Qwen" in model_name or "QwQ" in model_name:
         return get_qwen2(model_name, seqlen, hf_token)
