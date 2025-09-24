@@ -11,7 +11,7 @@ from ..trans_utils import InvSingleTransMatrix, InvDecomposeTransMatrix
 from ..trans_utils import TPTransMatrix
 from ..flat_linear import FlatQuantizedLinear
 
-from transformers.models.llama.modeling_llama import LlamaMLP, LlamaAttention, \
+from transformers.models.llama.modeling_llama import LlamaMLP, LlamaAttention, LlamaRotaryEmbedding, \
                                                      apply_rotary_pos_emb, repeat_kv
 
 
@@ -28,8 +28,8 @@ class FlatQuantLlamaMLP(LlamaMLP):
         self._ori_mode = False
         self.diag_init = args.diag_init
         if self.diag_init == "sq_style":
-            self.up_smax = torch.ones_like(self.up_proj.linear.weight.abs().max(dim=0)[0]).cuda() * 1e-5
-            self.down_smax = torch.ones_like(self.down_proj.linear.weight.abs().max(dim=0)[0]).cuda() * 1e-5
+            self.up_smax = torch.ones_like(self.up_proj.linear.weight.abs().max(dim=0)[0]).to('npu') * 1e-5
+            self.down_smax = torch.ones_like(self.down_proj.linear.weight.abs().max(dim=0)[0]).to('npu') * 1e-5
         
     def add_fq_trans(self):
         if self.args.direct_inv:
@@ -43,7 +43,7 @@ class FlatQuantLlamaMLP(LlamaMLP):
             down_dim_left, down_dim_right = get_decompose_dim(self.down_trans_dim)
             trans_list = []
             for i in range(self.args.tp):
-                trans_list.append(DecomposeTransMatrix(down_dim_left, down_dim_right, add_diag=self.args.add_diag, device="cuda"))
+                trans_list.append(DecomposeTransMatrix(down_dim_left, down_dim_right, add_diag=self.args.add_diag, device="npu"))
             self.down_trans = TPTransMatrix(trans_list)
             # down_dim_left, down_dim_right = get_decompose_dim(self.down_proj.linear.weight.shape[1])
             # self.down_trans = DecomposeTransMatrix(down_dim_left, down_dim_right, add_diag=self.args.add_diag)
@@ -127,13 +127,17 @@ class FlatQuantLlamaAttention(LlamaAttention):
         super().__init__(module.config, module.layer_idx)
         self.args = args
         
+        # 补充 rotary_emb 的定义
+        self.rotary_emb = LlamaRotaryEmbedding(config=module.config)
+        
         self.qkv_quant = ActivationQuantizer(bits=args.a_bits, sym=not(args.a_asym), lac=args.lac)
         self.q_proj = FlatQuantizedLinear(args, module.q_proj, act_quantizer=self.qkv_quant)
         self.k_proj = FlatQuantizedLinear(args, module.k_proj, act_quantizer=self.qkv_quant)
         self.v_proj = FlatQuantizedLinear(args, module.v_proj, act_quantizer=self.qkv_quant)
         self.o_proj = FlatQuantizedLinear(args, module.o_proj, tp=True)
         self.add_fq_trans()
-
+        
+        
         if args.q_bits < 16:
             self.q_cache_quantizer = ActivationQuantizer(bits=args.q_bits, \
                                         sym=not(args.q_asym), lac=args.lac, groupsize=-1, )
@@ -148,7 +152,7 @@ class FlatQuantLlamaAttention(LlamaAttention):
         self._eval_mode = False
         self.diag_init = args.diag_init
         if self.diag_init == "sq_style":
-            self.ln_smax = torch.ones_like(self.q_proj.linear.weight.abs().max(dim=0)[0]).cuda() * 1e-5
+            self.ln_smax = torch.ones_like(self.q_proj.linear.weight.abs().max(dim=0)[0]).to('npu') * 1e-5
 
     def add_fq_trans(self):
         if self.args.direct_inv:
@@ -224,6 +228,12 @@ class FlatQuantLlamaAttention(LlamaAttention):
             query_states, key_states, value_states = self._ori_forward_after_ln(hidden_states)
         else:
             query_states, key_states, value_states = self._trans_forward_after_ln(hidden_states)
+            
+        # self.num_heads 一直在报错没有定义，翻了模型的config文件发现确实没有，加一个定义，这是transformers库版本不同造成的
+        self.num_heads = self.config.num_attention_heads
+        
+        # self.num_key_value_heads也是同理，这是transformers库版本不同造成的
+        self.num_key_value_heads = self.config.num_key_value_heads
 
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
         key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
@@ -294,7 +304,10 @@ class FlatQuantLlamaAttention(LlamaAttention):
 
         if not output_attentions:
             attn_weights = None
-        return attn_output, attn_weights, past_key_value
+        # 参数过多，下一个接口无法接收，应该是版本问题
+        # 到transformers库里看过了，确认是版本问题，attention的原类只有这两个参数传出
+        # return attn_output, attn_weights, past_key_value
+        return attn_output, attn_weights
 
     def reparameterize(self):
         if self.ln_trans is not None:
