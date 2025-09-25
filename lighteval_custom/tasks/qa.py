@@ -149,6 +149,8 @@ lambada_openai = LightevalTaskConfig(
     generation_size=10,
     # 原本用的是ppl，但论文里用的是和其他一样的，但其他的是多选，这个换用单选的指标
     # metric=[Metrics.target_perplexity],
+    # 这个只能用于多项选择，使用报错后提示的建议指标
+    # metric=[loglikelihood_acc_metric(normalization=LogProbCharNorm())],
     metric=[Metrics.acc_golds_likelihood],
     stop_sequence=["\n"],
     version=0,
