@@ -45,6 +45,7 @@ nohup bash scripts/quantization/flatquant.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 4
 ```
 量化后模型默认保存到 ./outputs/modelzoo/method_name/ 文件夹
 ### 评测
+## 推理数据集评测
 ```shell
 # 评测该代码库量化后的模型只需要更改模型读取路径，可以添加参数seed来改变随机数种子，默认seed=42
 nohup bash scripts/inference/inference.sh /PATH/DeepSeek-R1-Distill-Qwen-7B 0,1,2,3 > output_test.log 2>&1 &
@@ -69,8 +70,20 @@ python -m make_stats_table --stats acc --models DeepSeek-R1-Distill-Qwen-7B --me
 评测结果会默认保存到 ./outputs/inference/ 文件夹下。
 
 备注：对于FlatQuant模型，正常使用重参数化请注意注意模型的config文件中使用自定义的Qwen2FlatQuantForCausalLM类，不使用重参数化则模型的config文件中使用Qwen2ForCausalLM类。另外FlatQuant模型由于使用自定义类注册进vllm来进行评测，速度慢是正常的。速度慢和速度不稳定现象的原因尚待探明。
-### 推理测试
-用于检测模型能否完成简单的对话推理任务：
+### 问答数据集评测
+参考FlatQuant库中选取的问答数据集，添加了使用lighteval库进行问答测试的代码。现在可以像测试推理数据集一样，方便地测试问答数据集了。相关的代码文件在inference_qa.py中，命令文件在./scripts/inference_qa.sh文件中，具体数据集的lighteval配置文件在./lighteval_custom/tasks/qa.py 文件中。具体的使用方法与推理数据集评测类似：
+```shell
+# 评测该代码库量化后的模型只需要更改模型读取路径，可以添加参数seed来改变随机数种子，默认seed=42
+nohup bash scripts/inference/inference_qa.sh /PATH/Meta-Llama-3-8B 0,1,2,3 > output_test_qa.log 2>&1 &
+nohup bash scripts/inference/inference_qa.sh ./outputs/modelzoo/flatquant/Meta-Llama-3-8B-flatquant-w8a8kv8-tp4 0,1,2,3 > output_test_qa.log 2>&1 &
+# 添加随机数种子的示例
+nohup bash scripts/inference/inference_qa.sh /PATH/Meta-Llama-3-8B 0,1,2,3 43 > output_test_qa.log 2>&1 &
+```
+
+需要补充说明的是，在问答数据集测试中，为了适配Llama-3-8B模型，设置了use_chat_template=False，具体的说明在inference_qa.py line 150。该参数在推理数据集评测中设置为True。
+
+### 对话测试
+用于检测模型能否完成简单的对话任务：
 ```shell
 # 需要修改python文件中的模型读取路径
 # 测试模型能否通过vllm_ascend库正常进行推理
