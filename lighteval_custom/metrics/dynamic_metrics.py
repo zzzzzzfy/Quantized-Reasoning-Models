@@ -55,25 +55,37 @@ from lighteval.utils.timeout import timeout
 
 logger = logging.getLogger(__name__)
 
+ 
+# def loglikelihood_acc_metric(normalization: LogProbNormalization | None = None) -> SampleLevelMetric:
+#     """
+#     Creates a accuracy (loglikelihood) metric, which returns accuracy given normalization.
+#     """
+
+#     normalization_str = normalization.name if normalization else ""
+#     metric_name = f"acc_{normalization_str}"
+#     return SampleLevelMetric(
+#         metric_name=metric_name,
+#         sample_level_fn=LoglikelihoodAcc(logprob_normalization=normalization).compute,
+#         category=MetricCategory.MULTICHOICE
+#         if not normalization == LogProbPMINorm()
+#         else MetricCategory.MULTICHOICE_PMI,
+#         use_case=MetricUseCase.ACCURACY,
+#         corpus_level_fn=np.mean,
+#         higher_is_better=True,
+#     )
 
 def loglikelihood_acc_metric(normalization: LogProbNormalization | None = None) -> SampleLevelMetric:
     """
     Creates a accuracy (loglikelihood) metric, which returns accuracy given normalization.
     """
-
-    normalization_str = normalization.name if normalization else ""
-    metric_name = f"acc_{normalization_str}"
     return SampleLevelMetric(
-        metric_name=metric_name,
+        metric_name="acc",
         sample_level_fn=LoglikelihoodAcc(logprob_normalization=normalization).compute,
-        category=MetricCategory.MULTICHOICE
-        if not normalization == LogProbPMINorm()
-        else MetricCategory.MULTICHOICE_PMI,
+        category=MetricCategory.MULTICHOICE,
         use_case=MetricUseCase.ACCURACY,
         corpus_level_fn=np.mean,
         higher_is_better=True,
     )
-
 
 def normalized_multi_choice_prob_metric(
     normalization: LogProbNormalization | None = None,
