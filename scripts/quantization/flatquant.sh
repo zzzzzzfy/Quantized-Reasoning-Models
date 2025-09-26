@@ -14,7 +14,7 @@ fi
 
 bits=("4" "8")
 for BITS in "${bits[@]}"; do
-    CUDA_VISIBLE_DEVICES=${device} \
+    ASCEND_VISIBLE_DEVICES=${device} \
     python -m methods.flatquant.main \
         --model ${model} \
         --w_bits ${BITS} --a_bits ${BITS} --a_asym \
