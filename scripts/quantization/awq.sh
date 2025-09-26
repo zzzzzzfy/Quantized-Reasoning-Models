@@ -8,7 +8,7 @@ model_name=$(basename "$model")
 
 bits=("3" "4")
 for BITS in "${bits[@]}"; do
-    CUDA_VISIBLE_DEVICES=${device} \
+    ASCEND_VISIBLE_DEVICES=${device} \
     python -m methods.awq.run_awq \
         --model ${model} \
         --w_bits ${BITS} --w_groupsize 128 --w_asym \
