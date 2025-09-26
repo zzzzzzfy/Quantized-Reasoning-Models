@@ -8,7 +8,7 @@ model_name=$(basename "$model")
 
 BITS=8
 
-CUDA_VISIBLE_DEVICES=${device} \
+ASCEND_VISIBLE_DEVICES=${device} \
 python -m methods.smoothquant.save_fake_quant \
     --model ${model} \
     --w_bits ${BITS} --w_clip \
