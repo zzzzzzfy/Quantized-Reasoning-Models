@@ -13,7 +13,12 @@ from accelerate.utils import get_balanced_memory
 # torch.backends.cuda.matmul.allow_tf32 = False
 # torch.backends.cudnn.allow_tf32 = False
 # DEV = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
-DEV = torch.device('npu:0') if torch.npu.is_available() else torch.device('cpu')
+
+# DEV = torch.device('npu') if torch.npu.is_available() else torch.device('cpu')
+
+import os
+device_id = int(os.getenv('ASCEND_VISIBLE_DEVICES', 0))  # 从环境变量获取设备编号
+DEV = torch.device(f'npu:{device_id}' if torch.npu.is_available() else 'cpu')
 
 
 def set_seed(seed):
